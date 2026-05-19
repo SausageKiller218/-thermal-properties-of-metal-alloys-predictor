@@ -19,6 +19,8 @@ xgboost.set_config(verbosity=0)
 
 def get_base_dir():
     if getattr(sys, "frozen", False):
+        if hasattr(sys, "_MEIPASS"):
+            return sys._MEIPASS
         return dirname(sys.executable)
     return dirname(abspath(__file__))
 BASE_DIR = get_base_dir()
