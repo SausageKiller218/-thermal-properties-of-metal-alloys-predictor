@@ -283,11 +283,11 @@ HTML_TEMPLATE = """
                 <label>Тип запрещённой зоны</label>
                 <select name="Egap_type">
                     {% set egap_value = form_values.get('Egap_type', 'metal') %}
-                    <option value="metal" {% if egap_value == 'metal' %}selected{% endif %}>metal</option>
-                    <option value="insulator" {% if egap_value == 'insulator' %}selected{% endif %}>insulator</option>
-                    <option value="semiconductor" {% if egap_value == 'semiconductor' %}selected{% endif %}>semiconductor</option>
-                    <option value="insulator-direct" {% if egap_value == 'insulator-direct' %}selected{% endif %}>insulator-direct</option>
-                    <option value="insulator-indirect" {% if egap_value == 'insulator-indirect' %}selected{% endif %}>insulator-indirect</option>
+                    <option value="metal" {% if egap_value == 'metal' %}selected{% endif %}>Металл</option>
+                    <option value="insulator" {% if egap_value == 'insulator' %}selected{% endif %}>Изолятор</option>
+                    <option value="semiconductor" {% if egap_value == 'semiconductor' %}selected{% endif %}>Полупроводник</option>
+                    <option value="insulator-direct" {% if egap_value == 'insulator-direct' %}selected{% endif %}>Изолятор с прямой запрещённой зоной</option>
+                    <option value="insulator-indirect" {% if egap_value == 'insulator-indirect' %}selected{% endif %}>Изолятор с непрямой запрещённой зоной</option>
                 </select>
             </div>
 
