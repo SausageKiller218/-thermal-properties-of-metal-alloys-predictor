@@ -38,6 +38,23 @@ RESULT_UNITS = {
 #    "agl_heat_capacity_Cp_300K_J_kgK": "J/(kg·K)",
 }
 
+RESULT_LABELS = {
+    "compound": "Состав",
+
+    "agl_debye": "Температура Дебая",
+    "agl_acoustic_debye": "Акустическая температура Дебая",
+    "agl_gruneisen": "Параметр Грюнайзена",
+
+    "agl_heat_capacity_Cv_300K": "Теплоёмкость при постоянном объёме при 300 K",
+    "agl_heat_capacity_Cp_300K": "Теплоёмкость при постоянном давлении при 300 K",
+
+    "agl_thermal_conductivity_300K": "Теплопроводность при 300 K",
+    "agl_thermal_expansion_300K": "Коэффициент теплового расширения при 300 K",
+
+    "agl_bulk_modulus_isothermal_300K": "Изотермический модуль объёмного сжатия при 300 K",
+    "agl_bulk_modulus_static_300K": "Статический модуль объёмного сжатия",
+}
+
 # =========================
 # MODEL LOAD STATUS
 # =========================
@@ -313,7 +330,7 @@ HTML_TEMPLATE = """
 
         {% for key, value in result.items() %}
         <tr>
-            <td>{{ key }}</td>
+            <td>{{ labels.get(key, key) }}</td>
             <td>
                 {% if value is number %}
                     {{ format_result_value(key, value)|safe }}
@@ -371,6 +388,7 @@ def index():
         form_values=form_values,
         units=RESULT_UNITS,
         format_result_value=format_result_value,
+        labels=RESULT_LABELS
     )
 
 
