@@ -4,6 +4,9 @@ from waitress import serve
 from threading import Thread
 import webview
 from traceback import format_exc
+from os.path import abspath, dirname, join
+import sys
+import pandas as pd
 from flask import Flask, request, render_template_string
 from predict_core import (
     get_model_status,
@@ -16,6 +19,49 @@ app = Flask(__name__)
 
 MODEL_LOADED = False
 MODEL_ERROR = None
+
+AFLOW_CSV_NAME = "aflow_agl.csv"
+AFLOW_DF_CACHE = None
+
+
+def get_base_dir():
+    if getattr(sys, "frozen", False):
+        if hasattr(sys, "_MEIPASS"):
+            return sys._MEIPASS
+        return dirname(sys.executable)
+    return dirname(abspath(__file__))
+
+def load_aflow_df():
+    global AFLOW_DF_CACHE
+    if AFLOW_DF_CACHE is None:
+        csv_path = join(get_base_dir(), AFLOW_CSV_NAME)
+        AFLOW_DF_CACHE = pd.read_csv(csv_path)
+        if "compound" not in AFLOW_DF_CACHE.columns:
+            raise ValueError(f"В файле {AFLOW_CSV_NAME} нет столбца compound")
+        AFLOW_DF_CACHE["compound"] = AFLOW_DF_CACHE["compound"].astype(str).str.strip()
+    return AFLOW_DF_CACHE
+
+def get_aflow_check_values(compound, result_keys):
+    df = load_aflow_df()
+    compound = str(compound).strip()
+    rows = df[df["compound"] == compound]
+    if rows.empty:
+        return None, f"В файле {AFLOW_CSV_NAME} не найден compound: {compound}"
+    row = rows.iloc[0]
+    check_values = {}
+    for key in result_keys:
+        if key == "compound":
+            check_values[key] = row.get("compound", compound)
+            continue
+        if key in row.index:
+            value = pd.to_numeric(row[key], errors="coerce")
+            if pd.isna(value):
+                check_values[key] = None
+            else:
+                check_values[key] = float(value)
+        else:
+            check_values[key] = None
+    return check_values, None
 
 RESULT_UNITS = {
     "compound": "",
@@ -36,6 +82,23 @@ RESULT_UNITS = {
 #    # если добавишь пересчёт теплоёмкости:
 #    "agl_heat_capacity_Cv_300K_J_kgK": "J/(kg·K)",
 #    "agl_heat_capacity_Cp_300K_J_kgK": "J/(kg·K)",
+}
+
+RESULT_LABELS = {
+    "compound": "Состав",
+
+    "agl_debye": "Температура Дебая",
+    "agl_acoustic_debye": "Акустическая температура Дебая",
+    "agl_gruneisen": "Параметр Грюнайзена",
+
+    "agl_heat_capacity_Cv_300K": "Теплоёмкость при постоянном объёме при 300 K",
+    "agl_heat_capacity_Cp_300K": "Теплоёмкость при постоянном давлении при 300 K",
+
+    "agl_thermal_conductivity_300K": "Теплопроводность при 300 K",
+    "agl_thermal_expansion_300K": "Коэффициент теплового расширения при 300 K",
+
+    "agl_bulk_modulus_isothermal_300K": "Изотермический модуль объёмного сжатия при 300 K",
+    "agl_bulk_modulus_static_300K": "Статический модуль объёмного сжатия",
 }
 
 # =========================
@@ -193,6 +256,14 @@ HTML_TEMPLATE = """
             user-select: none;
             white-space: nowrap;
         }
+        .check-button {
+            background: #32a852;
+            margin-left: 10px;
+        }
+        
+        .check-button:hover {
+            background: #278541;
+        }
     </style>
 </head>
 <body>
@@ -218,7 +289,7 @@ HTML_TEMPLATE = """
             <div>
                 <label>Состав</label>
                 <input name="compound" value="{{ form_values.get('compound', 'Ac1H2') }}" required>
-                <div class="hint">Например: Te2Zn2, Ac1H2, C1Nb1</div>
+                <div class="hint">Например: Te2Zn2, Ac1H2, C1Nb1, требуется ввести в формате с числом атомов</div>
             </div>
 
             <div>
@@ -266,22 +337,12 @@ HTML_TEMPLATE = """
                 <label>Тип запрещённой зоны</label>
                 <select name="Egap_type">
                     {% set egap_value = form_values.get('Egap_type', 'metal') %}
-                    <option value="metal" {% if egap_value == 'metal' %}selected{% endif %}>metal</option>
-                    <option value="insulator" {% if egap_value == 'insulator' %}selected{% endif %}>insulator</option>
-                    <option value="semiconductor" {% if egap_value == 'semiconductor' %}selected{% endif %}>semiconductor</option>
-                    <option value="insulator-direct" {% if egap_value == 'insulator-direct' %}selected{% endif %}>insulator-direct</option>
-                    <option value="insulator-indirect" {% if egap_value == 'insulator-indirect' %}selected{% endif %}>insulator-indirect</option>
+                    <option value="metal" {% if egap_value == 'metal' %}selected{% endif %}>Металл</option>
+                    <option value="insulator" {% if egap_value == 'insulator' %}selected{% endif %}>Изолятор</option>
+                    <option value="semiconductor" {% if egap_value == 'semiconductor' %}selected{% endif %}>Полупроводник</option>
+                    <option value="insulator-direct" {% if egap_value == 'insulator-direct' %}selected{% endif %}>Изолятор с прямой запрещённой зоной</option>
+                    <option value="insulator-indirect" {% if egap_value == 'insulator-indirect' %}selected{% endif %}>Изолятор с непрямой запрещённой зоной</option>
                 </select>
-            </div>
-
-            <div>
-                <label>Число атомов</label>
-                <input name="natoms" value="{{ form_values.get('natoms', '3') }}" required>
-            </div>
-
-            <div>
-                <label>Число элементов</label>
-                <input name="nspecies" value="{{ form_values.get('nspecies', '2') }}" required>
             </div>
 
             <div>
@@ -290,7 +351,8 @@ HTML_TEMPLATE = """
             </div>
         </div>
 
-        <button type="submit">Посчитать</button>
+        <button type="submit" name="action" value="predict">Посчитать</button>
+        <button type="submit" name="action" value="check" class="check-button">Проверить</button>
     </form>
 </div>
 
@@ -298,6 +360,13 @@ HTML_TEMPLATE = """
 <div class="card">
     <h2>Ошибка</h2>
     <div class="error">{{ error }}</div>
+</div>
+{% endif %}
+
+{% if check_message %}
+<div class="card">
+    <h2>Проверка</h2>
+    <div class="error">{{ check_message }}</div>
 </div>
 {% endif %}
 
@@ -309,11 +378,15 @@ HTML_TEMPLATE = """
         <tr>
             <th>Параметр</th>
             <th>Значение</th>
+            {% if check_requested %}
+                <th>Проверка</th>
+            {% endif %}
         </tr>
-
+    
         {% for key, value in result.items() %}
         <tr>
-            <td>{{ key }}</td>
+            <td>{{ labels.get(key, key) }}</td>
+    
             <td>
                 {% if value is number %}
                     {{ format_result_value(key, value)|safe }}
@@ -324,6 +397,25 @@ HTML_TEMPLATE = """
                     {{ value }}
                 {% endif %}
             </td>
+    
+            {% if check_requested %}
+            <td>
+                {% if check_values and key in check_values and check_values.get(key) is not none %}
+                    {% set check_value = check_values.get(key) %}
+    
+                    {% if check_value is number %}
+                        {{ format_result_value(key, check_value)|safe }}
+                        {% if units.get(key, "") %}
+                            {{ units.get(key, "")|safe }}
+                        {% endif %}
+                    {% else %}
+                        {{ check_value }}
+                    {% endif %}
+                {% else %}
+                нет данных
+                {% endif %}
+            </td>
+            {% endif %}
         </tr>
         {% endfor %}
     </table>
@@ -346,18 +438,31 @@ def index():
     error = None
     form_values = {}
 
+    check_requested = False
+    check_values = None
+    check_message = None
+    
+
     if request.method == "POST":
         form_values = request.form.to_dict()
+        action = request.form.get("action", "predict")
+        check_requested = action == "check"
 
         if not MODEL_LOADED:
             try_load_model()
 
         if not MODEL_LOADED:
-            error = "                   :\n" + str(MODEL_ERROR)
+            error = "Модель не загружена:\n" + str(MODEL_ERROR)
         else:
             try:
                 row_dict = row_dict_from_flask_form(request.form)
                 result = predict_from_dict(row_dict)
+
+                if check_requested:
+                    check_values, check_message = get_aflow_check_values(
+                        row_dict.get("compound", ""),
+                        result.keys()
+                    )
 
             except Exception:
                 error = format_exc()
@@ -371,6 +476,10 @@ def index():
         form_values=form_values,
         units=RESULT_UNITS,
         format_result_value=format_result_value,
+        labels=RESULT_LABELS,
+        check_requested=check_requested,
+        check_values=check_values,
+        check_message=check_message,
     )
 
 
