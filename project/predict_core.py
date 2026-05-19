@@ -60,14 +60,28 @@ def input_df(row_dict, print_input=False):
         "enthalpy_formation_atom",
         "Egap",
         "Egap_type",
-        "natoms",
-        "nspecies",
         "spacegroup_relax",
     ]
     row = {}
     for col in required_cols:
         row[col] = row_dict.get(col, np.nan)
     df_new = pd.DataFrame([row])
+
+    compound = df_new["compound"].iloc[0]
+    comp = parse_formula(compound)
+    if len(comp) == 0:
+        raise ValueError(
+            "Поле 'Состав' должно быть химической формулой, например Ac1H2, Te2Zn2, C1Nb1. "
+            f"Сейчас введено: {compound}"
+        )
+    natoms = sum(comp.values())
+    nspecies = len(comp)
+    if abs(natoms - round(natoms)) < 1e-9:
+        natoms = int(round(natoms))
+    df_new["natoms"] = natoms
+    df_new["nspecies"] = nspecies
+    df_new["compound"] = df_new["compound"].astype(str).str.strip()
+    df_new["Egap_type"] = df_new["Egap_type"].astype(str).str.strip()
     numeric_cols = [
         "volume_atom",
         "density",
@@ -80,8 +94,6 @@ def input_df(row_dict, print_input=False):
     ]
     for col in numeric_cols:
         df_new[col] = pd.to_numeric(df_new[col], errors="coerce")
-    df_new["compound"] = df_new["compound"].astype(str).str.strip()
-    df_new["Egap_type"] = df_new["Egap_type"].astype(str).str.strip()
     if print_input:
         print(df_new.to_string(index=False))
     return df_new
@@ -118,8 +130,6 @@ def row_dict_from_flask_form(form):
         "Egap": get_float("Egap"),
         "Egap_type": get_str("Egap_type"),
 
-        "natoms": get_int("natoms"),
-        "nspecies": get_int("nspecies"),
         "spacegroup_relax": get_int("spacegroup_relax"),
     }
 

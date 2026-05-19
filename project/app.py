@@ -235,7 +235,7 @@ HTML_TEMPLATE = """
             <div>
                 <label>Состав</label>
                 <input name="compound" value="{{ form_values.get('compound', 'Ac1H2') }}" required>
-                <div class="hint">Например: Te2Zn2, Ac1H2, C1Nb1</div>
+                <div class="hint">Например: Te2Zn2, Ac1H2, C1Nb1, требуется ввести в формате с числом атомов</div>
             </div>
 
             <div>
@@ -289,16 +289,6 @@ HTML_TEMPLATE = """
                     <option value="insulator-direct" {% if egap_value == 'insulator-direct' %}selected{% endif %}>insulator-direct</option>
                     <option value="insulator-indirect" {% if egap_value == 'insulator-indirect' %}selected{% endif %}>insulator-indirect</option>
                 </select>
-            </div>
-
-            <div>
-                <label>Число атомов</label>
-                <input name="natoms" value="{{ form_values.get('natoms', '3') }}" required>
-            </div>
-
-            <div>
-                <label>Число элементов</label>
-                <input name="nspecies" value="{{ form_values.get('nspecies', '2') }}" required>
             </div>
 
             <div>
