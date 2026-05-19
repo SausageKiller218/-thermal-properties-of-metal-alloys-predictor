@@ -1,0 +1,392 @@
+[
+    {
+        "model_path": "keras_model_0.keras",
+        "targets": [
+            "agl_debye",
+            "agl_heat_capacity_Cv_300K",
+            "agl_heat_capacity_Cp_300K",
+            "agl_thermal_expansion_300K",
+            "agl_bulk_modulus_isothermal_300K",
+            "agl_bulk_modulus_static_300K",
+            "agl_acoustic_debye"
+        ],
+        "use_log_targets": [],
+        "kind": "base",
+        "seed": 7,
+        "y_mean": {
+            "agl_debye": 367.06458821318,
+            "agl_heat_capacity_Cv_300K": 27.101276910659003,
+            "agl_heat_capacity_Cp_300K": 28.089373045112783,
+            "agl_thermal_expansion_300K": 5.7078590694383026e-05,
+            "agl_bulk_modulus_isothermal_300K": 111.83464659221585,
+            "agl_bulk_modulus_static_300K": 114.78134844537814,
+            "agl_acoustic_debye": 191.3859431667404
+        },
+        "y_std": {
+            "agl_debye": 226.88975444404207,
+            "agl_heat_capacity_Cv_300K": 23.27952072845029,
+            "agl_heat_capacity_Cp_300K": 24.26780803100769,
+            "agl_thermal_expansion_300K": 4.1848991500424654e-05,
+            "agl_bulk_modulus_isothermal_300K": 71.83979201411715,
+            "agl_bulk_modulus_static_300K": 72.32919002685547,
+            "agl_acoustic_debye": 125.61960708026285
+        }
+    },
+    {
+        "model_path": "keras_model_1.keras",
+        "targets": [
+            "agl_debye",
+            "agl_heat_capacity_Cv_300K",
+            "agl_heat_capacity_Cp_300K",
+            "agl_thermal_expansion_300K",
+            "agl_bulk_modulus_isothermal_300K",
+            "agl_bulk_modulus_static_300K",
+            "agl_acoustic_debye"
+        ],
+        "use_log_targets": [],
+        "kind": "base",
+        "seed": 123,
+        "y_mean": {
+            "agl_debye": 367.06458821318,
+            "agl_heat_capacity_Cv_300K": 27.101276910659003,
+            "agl_heat_capacity_Cp_300K": 28.089373045112783,
+            "agl_thermal_expansion_300K": 5.7078590694383026e-05,
+            "agl_bulk_modulus_isothermal_300K": 111.83464659221585,
+            "agl_bulk_modulus_static_300K": 114.78134844537814,
+            "agl_acoustic_debye": 191.3859431667404
+        },
+        "y_std": {
+            "agl_debye": 226.88975444404207,
+            "agl_heat_capacity_Cv_300K": 23.27952072845029,
+            "agl_heat_capacity_Cp_300K": 24.26780803100769,
+            "agl_thermal_expansion_300K": 4.1848991500424654e-05,
+            "agl_bulk_modulus_isothermal_300K": 71.83979201411715,
+            "agl_bulk_modulus_static_300K": 72.32919002685547,
+            "agl_acoustic_debye": 125.61960708026285
+        }
+    },
+    {
+        "model_path": "keras_model_2.keras",
+        "targets": [
+            "agl_debye",
+            "agl_heat_capacity_Cv_300K",
+            "agl_heat_capacity_Cp_300K",
+            "agl_thermal_expansion_300K",
+            "agl_bulk_modulus_isothermal_300K",
+            "agl_bulk_modulus_static_300K",
+            "agl_acoustic_debye"
+        ],
+        "use_log_targets": [],
+        "kind": "small",
+        "seed": 7,
+        "y_mean": {
+            "agl_debye": 367.06458821318,
+            "agl_heat_capacity_Cv_300K": 27.101276910659003,
+            "agl_heat_capacity_Cp_300K": 28.089373045112783,
+            "agl_thermal_expansion_300K": 5.7078590694383026e-05,
+            "agl_bulk_modulus_isothermal_300K": 111.83464659221585,
+            "agl_bulk_modulus_static_300K": 114.78134844537814,
+            "agl_acoustic_debye": 191.3859431667404
+        },
+        "y_std": {
+            "agl_debye": 226.88975444404207,
+            "agl_heat_capacity_Cv_300K": 23.27952072845029,
+            "agl_heat_capacity_Cp_300K": 24.26780803100769,
+            "agl_thermal_expansion_300K": 4.1848991500424654e-05,
+            "agl_bulk_modulus_isothermal_300K": 71.83979201411715,
+            "agl_bulk_modulus_static_300K": 72.32919002685547,
+            "agl_acoustic_debye": 125.61960708026285
+        }
+    },
+    {
+        "model_path": "keras_model_3.keras",
+        "targets": [
+            "agl_debye",
+            "agl_heat_capacity_Cv_300K",
+            "agl_heat_capacity_Cp_300K",
+            "agl_thermal_expansion_300K",
+            "agl_bulk_modulus_isothermal_300K",
+            "agl_bulk_modulus_static_300K",
+            "agl_acoustic_debye"
+        ],
+        "use_log_targets": [],
+        "kind": "small",
+        "seed": 123,
+        "y_mean": {
+            "agl_debye": 367.06458821318,
+            "agl_heat_capacity_Cv_300K": 27.101276910659003,
+            "agl_heat_capacity_Cp_300K": 28.089373045112783,
+            "agl_thermal_expansion_300K": 5.7078590694383026e-05,
+            "agl_bulk_modulus_isothermal_300K": 111.83464659221585,
+            "agl_bulk_modulus_static_300K": 114.78134844537814,
+            "agl_acoustic_debye": 191.3859431667404
+        },
+        "y_std": {
+            "agl_debye": 226.88975444404207,
+            "agl_heat_capacity_Cv_300K": 23.27952072845029,
+            "agl_heat_capacity_Cp_300K": 24.26780803100769,
+            "agl_thermal_expansion_300K": 4.1848991500424654e-05,
+            "agl_bulk_modulus_isothermal_300K": 71.83979201411715,
+            "agl_bulk_modulus_static_300K": 72.32919002685547,
+            "agl_acoustic_debye": 125.61960708026285
+        }
+    },
+    {
+        "model_path": "keras_model_4.keras",
+        "targets": [
+            "agl_debye",
+            "agl_heat_capacity_Cv_300K",
+            "agl_heat_capacity_Cp_300K",
+            "agl_thermal_expansion_300K",
+            "agl_bulk_modulus_isothermal_300K",
+            "agl_bulk_modulus_static_300K",
+            "agl_acoustic_debye"
+        ],
+        "use_log_targets": [],
+        "kind": "wide",
+        "seed": 7,
+        "y_mean": {
+            "agl_debye": 367.06458821318,
+            "agl_heat_capacity_Cv_300K": 27.101276910659003,
+            "agl_heat_capacity_Cp_300K": 28.089373045112783,
+            "agl_thermal_expansion_300K": 5.7078590694383026e-05,
+            "agl_bulk_modulus_isothermal_300K": 111.83464659221585,
+            "agl_bulk_modulus_static_300K": 114.78134844537814,
+            "agl_acoustic_debye": 191.3859431667404
+        },
+        "y_std": {
+            "agl_debye": 226.88975444404207,
+            "agl_heat_capacity_Cv_300K": 23.27952072845029,
+            "agl_heat_capacity_Cp_300K": 24.26780803100769,
+            "agl_thermal_expansion_300K": 4.1848991500424654e-05,
+            "agl_bulk_modulus_isothermal_300K": 71.83979201411715,
+            "agl_bulk_modulus_static_300K": 72.32919002685547,
+            "agl_acoustic_debye": 125.61960708026285
+        }
+    },
+    {
+        "model_path": "keras_model_5.keras",
+        "targets": [
+            "agl_debye",
+            "agl_heat_capacity_Cv_300K",
+            "agl_heat_capacity_Cp_300K",
+            "agl_thermal_expansion_300K",
+            "agl_bulk_modulus_isothermal_300K",
+            "agl_bulk_modulus_static_300K",
+            "agl_acoustic_debye"
+        ],
+        "use_log_targets": [],
+        "kind": "wide",
+        "seed": 123,
+        "y_mean": {
+            "agl_debye": 367.06458821318,
+            "agl_heat_capacity_Cv_300K": 27.101276910659003,
+            "agl_heat_capacity_Cp_300K": 28.089373045112783,
+            "agl_thermal_expansion_300K": 5.7078590694383026e-05,
+            "agl_bulk_modulus_isothermal_300K": 111.83464659221585,
+            "agl_bulk_modulus_static_300K": 114.78134844537814,
+            "agl_acoustic_debye": 191.3859431667404
+        },
+        "y_std": {
+            "agl_debye": 226.88975444404207,
+            "agl_heat_capacity_Cv_300K": 23.27952072845029,
+            "agl_heat_capacity_Cp_300K": 24.26780803100769,
+            "agl_thermal_expansion_300K": 4.1848991500424654e-05,
+            "agl_bulk_modulus_isothermal_300K": 71.83979201411715,
+            "agl_bulk_modulus_static_300K": 72.32919002685547,
+            "agl_acoustic_debye": 125.61960708026285
+        }
+    },
+    {
+        "model_path": "keras_model_6.keras",
+        "targets": [
+            "agl_thermal_conductivity_300K"
+        ],
+        "use_log_targets": [
+            "agl_thermal_conductivity_300K"
+        ],
+        "kind": "base",
+        "seed": 7,
+        "y_mean": {
+            "agl_thermal_conductivity_300K": 1.6995282038387842
+        },
+        "y_std": {
+            "agl_thermal_conductivity_300K": 0.8836934401293072
+        }
+    },
+    {
+        "model_path": "keras_model_7.keras",
+        "targets": [
+            "agl_thermal_conductivity_300K"
+        ],
+        "use_log_targets": [
+            "agl_thermal_conductivity_300K"
+        ],
+        "kind": "base",
+        "seed": 123,
+        "y_mean": {
+            "agl_thermal_conductivity_300K": 1.6995282038387842
+        },
+        "y_std": {
+            "agl_thermal_conductivity_300K": 0.8836934401293072
+        }
+    },
+    {
+        "model_path": "keras_model_8.keras",
+        "targets": [
+            "agl_thermal_conductivity_300K"
+        ],
+        "use_log_targets": [
+            "agl_thermal_conductivity_300K"
+        ],
+        "kind": "small",
+        "seed": 7,
+        "y_mean": {
+            "agl_thermal_conductivity_300K": 1.6995282038387842
+        },
+        "y_std": {
+            "agl_thermal_conductivity_300K": 0.8836934401293072
+        }
+    },
+    {
+        "model_path": "keras_model_9.keras",
+        "targets": [
+            "agl_thermal_conductivity_300K"
+        ],
+        "use_log_targets": [
+            "agl_thermal_conductivity_300K"
+        ],
+        "kind": "small",
+        "seed": 123,
+        "y_mean": {
+            "agl_thermal_conductivity_300K": 1.6995282038387842
+        },
+        "y_std": {
+            "agl_thermal_conductivity_300K": 0.8836934401293072
+        }
+    },
+    {
+        "model_path": "keras_model_10.keras",
+        "targets": [
+            "agl_thermal_conductivity_300K"
+        ],
+        "use_log_targets": [
+            "agl_thermal_conductivity_300K"
+        ],
+        "kind": "wide",
+        "seed": 7,
+        "y_mean": {
+            "agl_thermal_conductivity_300K": 1.6995282038387842
+        },
+        "y_std": {
+            "agl_thermal_conductivity_300K": 0.8836934401293072
+        }
+    },
+    {
+        "model_path": "keras_model_11.keras",
+        "targets": [
+            "agl_thermal_conductivity_300K"
+        ],
+        "use_log_targets": [
+            "agl_thermal_conductivity_300K"
+        ],
+        "kind": "wide",
+        "seed": 123,
+        "y_mean": {
+            "agl_thermal_conductivity_300K": 1.6995282038387842
+        },
+        "y_std": {
+            "agl_thermal_conductivity_300K": 0.8836934401293072
+        }
+    },
+    {
+        "model_path": "keras_model_12.keras",
+        "targets": [
+            "agl_gruneisen"
+        ],
+        "use_log_targets": [],
+        "kind": "base",
+        "seed": 7,
+        "y_mean": {
+            "agl_gruneisen": 2.116698258766033
+        },
+        "y_std": {
+            "agl_gruneisen": 0.2476674665148254
+        }
+    },
+    {
+        "model_path": "keras_model_13.keras",
+        "targets": [
+            "agl_gruneisen"
+        ],
+        "use_log_targets": [],
+        "kind": "base",
+        "seed": 123,
+        "y_mean": {
+            "agl_gruneisen": 2.116698258766033
+        },
+        "y_std": {
+            "agl_gruneisen": 0.2476674665148254
+        }
+    },
+    {
+        "model_path": "keras_model_14.keras",
+        "targets": [
+            "agl_gruneisen"
+        ],
+        "use_log_targets": [],
+        "kind": "small",
+        "seed": 7,
+        "y_mean": {
+            "agl_gruneisen": 2.116698258766033
+        },
+        "y_std": {
+            "agl_gruneisen": 0.2476674665148254
+        }
+    },
+    {
+        "model_path": "keras_model_15.keras",
+        "targets": [
+            "agl_gruneisen"
+        ],
+        "use_log_targets": [],
+        "kind": "small",
+        "seed": 123,
+        "y_mean": {
+            "agl_gruneisen": 2.116698258766033
+        },
+        "y_std": {
+            "agl_gruneisen": 0.2476674665148254
+        }
+    },
+    {
+        "model_path": "keras_model_16.keras",
+        "targets": [
+            "agl_gruneisen"
+        ],
+        "use_log_targets": [],
+        "kind": "wide",
+        "seed": 7,
+        "y_mean": {
+            "agl_gruneisen": 2.116698258766033
+        },
+        "y_std": {
+            "agl_gruneisen": 0.2476674665148254
+        }
+    },
+    {
+        "model_path": "keras_model_17.keras",
+        "targets": [
+            "agl_gruneisen"
+        ],
+        "use_log_targets": [],
+        "kind": "wide",
+        "seed": 123,
+        "y_mean": {
+            "agl_gruneisen": 2.116698258766033
+        },
+        "y_std": {
+            "agl_gruneisen": 0.2476674665148254
+        }
+    }
+]
