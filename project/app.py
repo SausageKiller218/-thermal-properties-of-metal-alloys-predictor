@@ -1,19 +1,11 @@
 # app.py
 
-#import os
-#import threading
-#import webbrowser
-#import traceback
-
-#import numpy as np
 from waitress import serve
 from threading import Thread
 import webview
-#from webbrowser import open as open_browser_url
 from traceback import format_exc
 from flask import Flask, request, render_template_string
 from predict_core import (
-    #get_predictor,
     get_model_status,
     row_dict_from_flask_form,
     predict_from_dict
@@ -25,6 +17,26 @@ app = Flask(__name__)
 MODEL_LOADED = False
 MODEL_ERROR = None
 
+RESULT_UNITS = {
+    "compound": "",
+
+    "agl_debye": "K",
+    "agl_acoustic_debye": "K",
+    "agl_gruneisen": "",
+
+    "agl_heat_capacity_Cv_300K": "k<sub>B</sub>/cell",
+    "agl_heat_capacity_Cp_300K": "k<sub>B</sub>/cell",
+
+    "agl_thermal_conductivity_300K": "W/(m·K)",
+    "agl_thermal_expansion_300K": "K<sup>-1</sup>",
+
+    "agl_bulk_modulus_isothermal_300K": "GPa",
+    "agl_bulk_modulus_static_300K": "GPa",
+
+#    # если добавишь пересчёт теплоёмкости:
+#    "agl_heat_capacity_Cv_300K_J_kgK": "J/(kg·K)",
+#    "agl_heat_capacity_Cp_300K_J_kgK": "J/(kg·K)",
+}
 
 # =========================
 # MODEL LOAD STATUS
@@ -37,52 +49,21 @@ def try_load_model():
 
 try_load_model()
 
+def format_result_value(key, value):
+    if not isinstance(value, (int, float)):
+        return str(value)
 
-# =========================
-# FORM PARSING
-# =========================
+    if key == "agl_thermal_expansion_300K":
+        if value == 0:
+            return "0"
 
-#def parse_float(value, default=np.nan):
-#    if value is None:
-#        return default
-#
-#    value = str(value).strip().replace(",", ".")
-#
-#    if value == "":
-#        return default
-#
-#    return float(value)
-#
-#
-#def parse_int(value, default=np.nan):
-#    if value is None:
-#        return default
-#
-#    value = str(value).strip()
-#
-#    if value == "":
-#        return default
-#
-#    return int(value)
-#
-#
-#def row_dict_from_form(form):
-#    return {
-#        "compound": form.get("compound", "").strip(),
-#
-#        "volume_atom": parse_float(form.get("volume_atom")),
-#        "density": parse_float(form.get("density")),
-#        "energy_atom": parse_float(form.get("energy_atom")),
-#        "enthalpy_formation_atom": parse_float(form.get("enthalpy_formation_atom")),
-#
-#        "Egap": parse_float(form.get("Egap")),
-#        "Egap_type": form.get("Egap_type", "").strip(),
-#
- #       "natoms": parse_int(form.get("natoms")),
- #       "nspecies": parse_int(form.get("nspecies")),
- #       "spacegroup_relax": parse_int(form.get("spacegroup_relax")),
- #   }
+        mantissa, exponent = f"{value:.8e}".split("e")
+        mantissa = float(mantissa)
+        exponent = int(exponent)
 
+        return f"{mantissa:.8g} × 10<sup>{exponent}</sup>"
+
+    return f"{value:.8g}"
 
 # =========================
 # HTML
@@ -191,6 +172,27 @@ HTML_TEMPLATE = """
             color: #666;
             font-size: 13px;
         }
+        
+        .input-with-unit {
+            position: relative;
+            width: 100%;
+        }
+        
+        .input-with-unit input {
+            padding-right: 95px;
+        }
+        
+        .unit-suffix {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #666;
+            font-size: 14px;
+            pointer-events: none;
+            user-select: none;
+            white-space: nowrap;
+        }
     </style>
 </head>
 <body>
@@ -214,39 +216,54 @@ HTML_TEMPLATE = """
     <form method="post">
         <div class="grid">
             <div>
-                <label>compound</label>
+                <label>Состав</label>
                 <input name="compound" value="{{ form_values.get('compound', 'Ac1H2') }}" required>
                 <div class="hint">Например: Te2Zn2, Ac1H2, C1Nb1</div>
             </div>
 
             <div>
-                <label>volume_atom</label>
-                <input name="volume_atom" value="{{ form_values.get('volume_atom', '17.0642') }}" required>
+                <label>Атомный Объём</label>
+                <div class="input-with-unit">
+                    <input name="volume_atom" value="{{ form_values.get('volume_atom', '17.0642') }}" required>
+                    <span class="unit-suffix">Å<sup>3</sup>/atom</span>
+                </div>
             </div>
 
             <div>
-                <label>density</label>
-                <input name="density" value="{{ form_values.get('density', '7.42958') }}" required>
+                <label>Плотность материала</label>
+                <div class="input-with-unit">
+                    <input name="density" value="{{ form_values.get('density', '7.42958') }}" required>
+                    <span class="unit-suffix">g/cm<sup>3</sup></span>
+                </div>
             </div>
 
             <div>
-                <label>energy_atom</label>
-                <input name="energy_atom" value="{{ form_values.get('energy_atom', '-4.18878') }}" required>
+                <label>Энергия на атом</label>
+                <div class="input-with-unit">
+                    <input name="energy_atom" value="{{ form_values.get('energy_atom', '-4.18878') }}" required>
+                    <span class="unit-suffix">eV/atom</span>
+                </div>
             </div>
 
             <div>
-                <label>enthalpy_formation_atom</label>
-                <input name="enthalpy_formation_atom" value="{{ form_values.get('enthalpy_formation_atom', '-0.566575') }}">
+                <label>Энтальпия образования на атом</label>
+                <div class="input-with-unit">
+                    <input name="enthalpy_formation_atom" value="{{ form_values.get('enthalpy_formation_atom', '-0.566575') }}">
+                    <span class="unit-suffix">eV/atom</span>
+                </div>
                 <div class="hint">Можно оставить пустым</div>
             </div>
 
             <div>
-                <label>Egap</label>
-                <input name="Egap" value="{{ form_values.get('Egap', '0.0') }}" required>
+                <label>Ширина запрещённой зоны</label>
+                <div class="input-with-unit">
+                    <input name="Egap" value="{{ form_values.get('Egap', '0.0') }}" required>
+                    <span class="unit-suffix">eV</span>
+                </div>
             </div>
 
             <div>
-                <label>Egap_type</label>
+                <label>Тип запрещённой зоны</label>
                 <select name="Egap_type">
                     {% set egap_value = form_values.get('Egap_type', 'metal') %}
                     <option value="metal" {% if egap_value == 'metal' %}selected{% endif %}>metal</option>
@@ -258,17 +275,17 @@ HTML_TEMPLATE = """
             </div>
 
             <div>
-                <label>natoms</label>
+                <label>Число атомов</label>
                 <input name="natoms" value="{{ form_values.get('natoms', '3') }}" required>
             </div>
 
             <div>
-                <label>nspecies</label>
+                <label>Число элементов</label>
                 <input name="nspecies" value="{{ form_values.get('nspecies', '2') }}" required>
             </div>
 
             <div>
-                <label>spacegroup_relax</label>
+                <label>Пространственная группа</label>
                 <input name="spacegroup_relax" value="{{ form_values.get('spacegroup_relax', '225') }}" required>
             </div>
         </div>
@@ -299,7 +316,10 @@ HTML_TEMPLATE = """
             <td>{{ key }}</td>
             <td>
                 {% if value is number %}
-                    {{ "%.8g"|format(value) }}
+                    {{ format_result_value(key, value)|safe }}
+                    {% if units.get(key, "") %}
+                        {{ units.get(key, "")|safe }}
+                    {% endif %}
                 {% else %}
                     {{ value }}
                 {% endif %}
@@ -349,6 +369,8 @@ def index():
         result=result,
         error=error,
         form_values=form_values,
+        units=RESULT_UNITS,
+        format_result_value=format_result_value,
     )
 
 
