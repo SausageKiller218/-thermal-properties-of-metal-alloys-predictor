@@ -293,7 +293,7 @@ HTML_TEMPLATE = """
             </div>
 
             <div>
-                <label>Атомный Объём</label>
+                <label>Объём на атом</label>s
                 <div class="input-with-unit">
                     <input name="volume_atom" value="{{ form_values.get('volume_atom', '17.0642') }}" required>
                     <span class="unit-suffix">Å<sup>3</sup>/atom</span>
