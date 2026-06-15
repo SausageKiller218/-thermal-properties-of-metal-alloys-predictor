@@ -84,15 +84,15 @@ ensure_pip_in_venv
 
 VENV_PYTHON="$VENV_DIR/bin/python"
 
-echo "Обновляю pip..."
-"$VENV_PYTHON" -m pip install --upgrade pip setuptools wheel
+#echo "Обновляю pip..."
+#"$VENV_PYTHON" -m pip install --upgrade pip setuptools wheel
 
 REQ_HASH_FILE="$VENV_DIR/.requirements_server.sha256"
 CURRENT_REQ_HASH="$(sha256sum "$REQ_FILE" | awk '{print $1}')"
 
 if [ ! -f "$REQ_HASH_FILE" ] || [ "$(cat "$REQ_HASH_FILE")" != "$CURRENT_REQ_HASH" ]; then
     echo "Устанавливаю/обновляю зависимости из _internal/requirements_server.txt..."
-    "$VENV_PYTHON" -m pip install -r "$REQ_FILE"
+    "$VENV_PYTHON" -m pip install --disable-pip-version-check -r "$REQ_FILE"
     echo "$CURRENT_REQ_HASH" > "$REQ_HASH_FILE"
 else
     echo "Зависимости уже установлены."
