@@ -1,5 +1,5 @@
 from os import environ
-from os.path import abspath, dirname, join
+from os.path import abspath, dirname, join, isdir, basename
 environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 environ["AUTOGRAPH_VERBOSITY"] = "0"
 import sys
@@ -13,17 +13,43 @@ from re import findall
 from warnings import filterwarnings
 from mendeleev import element
 import xgboost
-#from xgboost import XGBRegressor
 
 xgboost.set_config(verbosity=0)
 
-def get_base_dir():
+def get_project_dir():
     if getattr(sys, "frozen", False):
-        if hasattr(sys, "_MEIPASS"):
-            return sys._MEIPASS
         return dirname(sys.executable)
-    return dirname(abspath(__file__))
-BASE_DIR = get_base_dir()
+
+    source_dir = dirname(abspath(__file__))
+
+    if basename(source_dir) == "src":
+        return dirname(source_dir)
+
+    return source_dir
+
+
+def get_resource_dir():
+    project_dir = get_project_dir()
+
+    candidates = []
+
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        candidates.append(join(sys._MEIPASS, "resources"))
+        candidates.append(sys._MEIPASS)
+
+    candidates.extend([
+        join(project_dir, "resources"),
+        join(project_dir, "_internal", "resources"),
+        project_dir,
+    ])
+
+    for path in candidates:
+        if isdir(path):
+            return path
+
+    return project_dir
+
+BASE_DIR = get_resource_dir()
 ARTIFACT_DIR = join(BASE_DIR, "model")
 filterwarnings(
     "ignore",
@@ -136,8 +162,6 @@ def row_dict_from_flask_form(form):
     }
 
 def load_saved_model():
-    BASE_DIR = get_base_dir()
-    ARTIFACT_DIR = join(BASE_DIR, "model")
     imputer = joblib_load(join(ARTIFACT_DIR, "imputer.joblib"))
     scaler = joblib_load(join(ARTIFACT_DIR, "scaler.joblib"))
     feature_cols = joblib_load(join(ARTIFACT_DIR, "feature_cols.joblib"))

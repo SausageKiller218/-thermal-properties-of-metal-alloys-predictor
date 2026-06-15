@@ -1,19 +1,55 @@
 # app.py
 
-from waitress import serve
+from argparse import ArgumentParser
 from threading import Thread
-import webview
 from traceback import format_exc
-from os.path import abspath, dirname, join
+
+from waitress import serve
+from flask import Flask, request, render_template_string
+
+from os.path import abspath, dirname, join, isdir, basename
+
 import sys
 import pandas as pd
-from flask import Flask, request, render_template_string
+
 from predict_core import (
     get_model_status,
     row_dict_from_flask_form,
     predict_from_dict
 )
 
+def get_project_dir():
+    if getattr(sys, "frozen", False):
+        return dirname(sys.executable)
+
+    source_dir = dirname(abspath(__file__))
+
+    if basename(source_dir) == "src":
+        return dirname(source_dir)
+
+    return source_dir
+
+
+def get_resource_dir():
+    project_dir = get_project_dir()
+
+    candidates = []
+
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        candidates.append(join(sys._MEIPASS, "resources"))
+        candidates.append(sys._MEIPASS)
+
+    candidates.extend([
+        join(project_dir, "resources"),
+        join(project_dir, "_internal", "resources"),
+        project_dir,
+    ])
+
+    for path in candidates:
+        if isdir(path):
+            return path
+
+    return project_dir
 
 app = Flask(__name__)
 
@@ -23,18 +59,10 @@ MODEL_ERROR = None
 AFLOW_CSV_NAME = "aflow_agl.csv"
 AFLOW_DF_CACHE = None
 
-
-def get_base_dir():
-    if getattr(sys, "frozen", False):
-        if hasattr(sys, "_MEIPASS"):
-            return sys._MEIPASS
-        return dirname(sys.executable)
-    return dirname(abspath(__file__))
-
 def load_aflow_df():
     global AFLOW_DF_CACHE
     if AFLOW_DF_CACHE is None:
-        csv_path = join(get_base_dir(), AFLOW_CSV_NAME)
+        csv_path = join(get_resource_dir(), AFLOW_CSV_NAME)
         AFLOW_DF_CACHE = pd.read_csv(csv_path)
         if "compound" not in AFLOW_DF_CACHE.columns:
             raise ValueError(f"В файле {AFLOW_CSV_NAME} нет столбца compound")
@@ -293,7 +321,7 @@ HTML_TEMPLATE = """
             </div>
 
             <div>
-                <label>Атомный Объём</label>
+                <label>Объём на атом</label>
                 <div class="input-with-unit">
                     <input name="volume_atom" value="{{ form_values.get('volume_atom', '17.0642') }}" required>
                     <span class="unit-suffix">Å<sup>3</sup>/atom</span>
@@ -482,33 +510,69 @@ def index():
         check_message=check_message,
     )
 
-
 # =========================
-# RUN
+# RUN MODES
 # =========================
 
+def parse_args():
+    parser = ArgumentParser(description="AGL Predictor")
 
-HOST = "127.0.0.1"
-PORT = 5000
-URL = f"http://{HOST}:{PORT}"
+    parser.add_argument(
+        "-server",
+        "--server",
+        action="store_true",
+        help="Запустить только веб-сервер без окна pywebview"
+    )
+
+    parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="Адрес сервера. Для доступа из сети: 0.0.0.0"
+    )
+
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=5000,
+        help="Порт сервера"
+    )
+
+    parser.add_argument(
+        "--threads",
+        type=int,
+        default=4,
+        help="Количество потоков Waitress"
+    )
+
+    return parser.parse_args()
 
 
-def run_server():
+def run_server(host, port, threads):
     serve(
         app,
-        host=HOST,
-        port=PORT,
-        threads=4
+        host=host,
+        port=port,
+        threads=threads
     )
 
 
-if __name__ == "__main__":
-    server_thread = Thread(target=run_server, daemon=True)
+def run_desktop(host, port, threads):
+    server_thread = Thread(
+        target=run_server,
+        args=(host, port, threads),
+        daemon=True
+    )
     server_thread.start()
+
+    # Для окна нельзя нормально открывать 0.0.0.0
+    window_host = "127.0.0.1" if host == "0.0.0.0" else host
+    url = f"http://{window_host}:{port}"
+
+    import webview
 
     webview.create_window(
         title="AGL Predictor",
-        url=URL,
+        url=url,
         width=1100,
         height=850,
         resizable=True,
@@ -516,3 +580,21 @@ if __name__ == "__main__":
     )
 
     webview.start()
+
+
+if __name__ == "__main__":
+    args = parse_args()
+
+    if args.server:
+        print(f"AGL Predictor server started: http://{args.host}:{args.port}")
+        run_server(
+            host=args.host,
+            port=args.port,
+            threads=args.threads
+        )
+    else:
+        run_desktop(
+            host=args.host,
+            port=args.port,
+            threads=args.threads
+        )
