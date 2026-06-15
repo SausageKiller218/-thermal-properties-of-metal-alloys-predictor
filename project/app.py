@@ -1,18 +1,22 @@
 # app.py
 
-from waitress import serve
+from argparse import ArgumentParser
 from threading import Thread
-import webview
 from traceback import format_exc
+
+from waitress import serve
+from flask import Flask, request, render_template_string
+
 from os.path import abspath, dirname, join
 import sys
 import pandas as pd
-from flask import Flask, request, render_template_string
+
 from predict_core import (
     get_model_status,
     row_dict_from_flask_form,
     predict_from_dict
 )
+
 
 
 app = Flask(__name__)
@@ -502,13 +506,69 @@ def run_server():
     )
 
 
-if __name__ == "__main__":
-    server_thread = Thread(target=run_server, daemon=True)
+# =========================
+# RUN MODES
+# =========================
+
+def parse_args():
+    parser = ArgumentParser(description="AGL Predictor")
+
+    parser.add_argument(
+        "-server",
+        "--server",
+        action="store_true",
+        help="Запустить только веб-сервер без окна pywebview"
+    )
+
+    parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="Адрес сервера. Для доступа из сети: 0.0.0.0"
+    )
+
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=5000,
+        help="Порт сервера"
+    )
+
+    parser.add_argument(
+        "--threads",
+        type=int,
+        default=4,
+        help="Количество потоков Waitress"
+    )
+
+    return parser.parse_args()
+
+
+def run_server(host, port, threads):
+    serve(
+        app,
+        host=host,
+        port=port,
+        threads=threads
+    )
+
+
+def run_desktop(host, port, threads):
+    server_thread = Thread(
+        target=run_server,
+        args=(host, port, threads),
+        daemon=True
+    )
     server_thread.start()
+
+    # Для окна нельзя нормально открывать 0.0.0.0
+    window_host = "127.0.0.1" if host == "0.0.0.0" else host
+    url = f"http://{window_host}:{port}"
+
+    import webview
 
     webview.create_window(
         title="AGL Predictor",
-        url=URL,
+        url=url,
         width=1100,
         height=850,
         resizable=True,
@@ -516,3 +576,21 @@ if __name__ == "__main__":
     )
 
     webview.start()
+
+
+if __name__ == "__main__":
+    args = parse_args()
+
+    if args.server:
+        print(f"AGL Predictor server started: http://{args.host}:{args.port}")
+        run_server(
+            host=args.host,
+            port=args.port,
+            threads=args.threads
+        )
+    else:
+        run_desktop(
+            host=args.host,
+            port=args.port,
+            threads=args.threads
+        )
