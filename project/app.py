@@ -7,7 +7,8 @@ from traceback import format_exc
 from waitress import serve
 from flask import Flask, request, render_template_string
 
-from os.path import abspath, dirname, join
+from os.path import abspath, dirname, join, isdir, basename
+
 import sys
 import pandas as pd
 
@@ -17,7 +18,38 @@ from predict_core import (
     predict_from_dict
 )
 
+def get_project_dir():
+    if getattr(sys, "frozen", False):
+        return dirname(sys.executable)
 
+    source_dir = dirname(abspath(__file__))
+
+    if basename(source_dir) == "src":
+        return dirname(source_dir)
+
+    return source_dir
+
+
+def get_resource_dir():
+    project_dir = get_project_dir()
+
+    candidates = []
+
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        candidates.append(join(sys._MEIPASS, "resources"))
+        candidates.append(sys._MEIPASS)
+
+    candidates.extend([
+        join(project_dir, "resources"),
+        join(project_dir, "_internal", "resources"),
+        project_dir,
+    ])
+
+    for path in candidates:
+        if isdir(path):
+            return path
+
+    return project_dir
 
 app = Flask(__name__)
 
@@ -27,18 +59,10 @@ MODEL_ERROR = None
 AFLOW_CSV_NAME = "aflow_agl.csv"
 AFLOW_DF_CACHE = None
 
-
-def get_base_dir():
-    if getattr(sys, "frozen", False):
-        if hasattr(sys, "_MEIPASS"):
-            return sys._MEIPASS
-        return dirname(sys.executable)
-    return dirname(abspath(__file__))
-
 def load_aflow_df():
     global AFLOW_DF_CACHE
     if AFLOW_DF_CACHE is None:
-        csv_path = join(get_base_dir(), AFLOW_CSV_NAME)
+        csv_path = join(get_resource_dir(), AFLOW_CSV_NAME)
         AFLOW_DF_CACHE = pd.read_csv(csv_path)
         if "compound" not in AFLOW_DF_CACHE.columns:
             raise ValueError(f"В файле {AFLOW_CSV_NAME} нет столбца compound")
@@ -485,26 +509,6 @@ def index():
         check_values=check_values,
         check_message=check_message,
     )
-
-
-# =========================
-# RUN
-# =========================
-
-
-HOST = "127.0.0.1"
-PORT = 5000
-URL = f"http://{HOST}:{PORT}"
-
-
-def run_server():
-    serve(
-        app,
-        host=HOST,
-        port=PORT,
-        threads=4
-    )
-
 
 # =========================
 # RUN MODES
