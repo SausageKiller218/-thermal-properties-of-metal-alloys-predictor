@@ -1,5 +1,6 @@
 # app.py
 
+from datetime import datetime
 from argparse import ArgumentParser
 from threading import Thread
 from traceback import format_exc
@@ -7,7 +8,7 @@ from traceback import format_exc
 from waitress import serve
 from flask import Flask, request, render_template_string
 
-from os.path import abspath, dirname, join, isdir, basename
+from os.path import abspath, dirname, join, isdir, basename, isfile, getsize
 
 import sys
 import pandas as pd
@@ -32,24 +33,33 @@ def get_project_dir():
 
 def get_resource_dir():
     project_dir = get_project_dir()
-
     candidates = []
-
     if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
         candidates.append(join(sys._MEIPASS, "resources"))
         candidates.append(sys._MEIPASS)
-
     candidates.extend([
         join(project_dir, "resources"),
         join(project_dir, "_internal", "resources"),
         project_dir,
     ])
-
     for path in candidates:
         if isdir(path):
             return path
-
     return project_dir
+
+def get_output_dir():
+    if getattr(sys, "frozen", False):
+        return dirname(sys.executable)
+    source_dir = dirname(abspath(__file__))
+    # Linux/server layout:
+    # AGLPredictor_web/_internal/src/app.py
+    # results.csv должен быть в AGLPredictor_web/
+    if basename(source_dir) == "src":
+        parent_dir = dirname(source_dir)
+        if basename(parent_dir) == "_internal":
+            return dirname(parent_dir)
+        return parent_dir
+    return source_dir
 
 app = Flask(__name__)
 
@@ -58,6 +68,22 @@ MODEL_ERROR = None
 
 AFLOW_CSV_NAME = "aflow_agl.csv"
 AFLOW_DF_CACHE = None
+RESULTS_CSV_NAME = "results.csv"
+BATCH_RESULTS_CSV_NAME = "batch_results.csv"
+INPUT_COLUMNS_REQUIRED = [
+    "compound",
+    "volume_atom",
+    "density",
+    "energy_atom",
+    "Egap",
+    "Egap_type",
+    "spacegroup_relax",
+]
+INPUT_COLUMNS_OPTIONAL = [
+    "enthalpy_formation_atom",
+]
+INPUT_COLUMNS_ALL = INPUT_COLUMNS_REQUIRED + INPUT_COLUMNS_OPTIONAL
+
 
 def load_aflow_df():
     global AFLOW_DF_CACHE
@@ -129,6 +155,18 @@ RESULT_LABELS = {
     "agl_bulk_modulus_static_300K": "Статический модуль объёмного сжатия",
 }
 
+output_order = [
+    "agl_debye",
+    "agl_acoustic_debye",
+    "agl_gruneisen",
+    "agl_heat_capacity_Cp_300K",
+    "agl_heat_capacity_Cv_300K",
+    "agl_thermal_conductivity_300K",
+    "agl_thermal_expansion_300K",
+    "agl_bulk_modulus_isothermal_300K",
+    "agl_bulk_modulus_static_300K",
+]
+
 # =========================
 # MODEL LOAD STATUS
 # =========================
@@ -155,6 +193,188 @@ def format_result_value(key, value):
         return f"{mantissa:.8g} × 10<sup>{exponent}</sup>"
 
     return f"{value:.8g}"
+
+def csv_safe_value(value):
+    if value is None:
+        return ""
+
+    try:
+        if pd.isna(value):
+            return ""
+    except Exception:
+        pass
+
+    try:
+        if hasattr(value, "item"):
+            return value.item()
+    except Exception:
+        pass
+
+    return value
+
+
+def get_results_csv_columns():
+    prediction_cols = [
+        f"pred_{key}"
+        for key in output_order
+    ]
+
+    check_cols = [
+        f"check_{key}"
+        for key in output_order
+    ]
+
+    return (
+        ["timestamp", "source", "row_number"]
+        + INPUT_COLUMNS_ALL
+        + prediction_cols
+        + check_cols
+    )
+
+
+def make_results_csv_row(row_dict, result, source="manual", row_number=None, check_values=None):
+    row = {
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "source": source,
+        "row_number": "" if row_number is None else row_number,
+    }
+
+    for key in INPUT_COLUMNS_ALL:
+        row[key] = csv_safe_value(row_dict.get(key, ""))
+
+    for key in output_order:
+        row[f"pred_{key}"] = csv_safe_value(result.get(key, ""))
+
+    for key in output_order:
+        if check_values:
+            row[f"check_{key}"] = csv_safe_value(check_values.get(key, ""))
+        else:
+            row[f"check_{key}"] = ""
+
+    return row
+
+
+def append_prediction_to_results_csv(row_dict, result, source="manual", row_number=None, check_values=None):
+    output_dir = get_output_dir()
+    csv_path = join(output_dir, RESULTS_CSV_NAME)
+
+    columns = get_results_csv_columns()
+
+    new_row = make_results_csv_row(
+        row_dict=row_dict,
+        result=result,
+        source=source,
+        row_number=row_number,
+        check_values=check_values
+    )
+
+    new_df = pd.DataFrame([new_row], columns=columns)
+
+    file_exists = isfile(csv_path) and getsize(csv_path) > 0
+
+    new_df.to_csv(
+        csv_path,
+        mode="a",
+        header=not file_exists,
+        index=False,
+        encoding="utf-8-sig"
+    )
+
+    return csv_path
+
+
+def save_batch_results_csv(rows):
+    output_dir = get_output_dir()
+    csv_path = join(output_dir, BATCH_RESULTS_CSV_NAME)
+
+    pd.DataFrame(rows).to_csv(
+        csv_path,
+        index=False,
+        encoding="utf-8-sig"
+    )
+
+    return csv_path
+
+
+def predict_batch_from_file(file_storage):
+    if file_storage is None or file_storage.filename == "":
+        raise ValueError("Файл не выбран")
+
+    df_input = pd.read_csv(
+        file_storage,
+        sep=None,
+        engine="python"
+    )
+
+    df_input.columns = [str(c).strip() for c in df_input.columns]
+
+    missing_cols = [
+        col for col in INPUT_COLUMNS_REQUIRED
+        if col not in df_input.columns
+    ]
+
+    if missing_cols:
+        raise ValueError(
+            "В файле не хватает обязательных столбцов: "
+            + ", ".join(missing_cols)
+        )
+
+    for col in INPUT_COLUMNS_OPTIONAL:
+        if col not in df_input.columns:
+            df_input[col] = ""
+
+    batch_rows = []
+    batch_errors = []
+
+    for idx, row in df_input.iterrows():
+        row_number = idx + 2
+
+        row_dict = {
+            col: row.get(col, "")
+            for col in INPUT_COLUMNS_ALL
+        }
+
+        try:
+            result = predict_from_dict(row_dict)
+
+            append_prediction_to_results_csv(
+                row_dict=row_dict,
+                result=result,
+                source=f"batch file: {file_storage.filename}",
+                row_number=row_number
+            )
+
+            output_row = {}
+
+            for col in INPUT_COLUMNS_ALL:
+                output_row[col] = row_dict.get(col, "")
+
+            for key in output_order:
+                output_row[key] = result.get(key, "")
+                output_row[f"pred_{key}"] = result.get(key, "")
+
+            batch_rows.append(output_row)
+
+        except Exception as e:
+            batch_errors.append({
+                "row": row_number,
+                "compound": row_dict.get("compound", ""),
+                "error": str(e),
+            })
+
+    batch_csv_path = None
+
+    if batch_rows:
+        batch_csv_path = save_batch_results_csv(batch_rows)
+
+    return batch_rows, batch_errors, batch_csv_path
+
+
+
+
+
+
+
 
 # =========================
 # HTML
@@ -292,6 +512,78 @@ HTML_TEMPLATE = """
         .check-button:hover {
             background: #278541;
         }
+        .table-scroll {
+            width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .table-scroll table {
+            min-width: 100%;
+        }
+
+        .batch-result-card {
+            box-sizing: border-box;
+
+            /* Не меньше обычной карточки */
+            min-width: 100%;
+
+            /* Расширяется по таблице, но не шире окна минус 40px */
+            width: fit-content;
+            max-width: calc(100vw - 40px);
+
+            /* Центрирование относительно окна */
+            margin-left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .batch-result-card .table-scroll {
+            width: 100%;
+            max-width: 100%;
+            overflow: auto;
+        }
+
+        .batch-table {
+            width: max-content;
+            min-width: 100%;
+            table-layout: auto;
+            font-size: 13px;
+        }
+
+        .batch-table td {
+            white-space: nowrap;
+            word-break: normal;
+            overflow-wrap: normal;
+            vertical-align: top;
+        }
+
+        .batch-table th {
+            width: 1%;
+            max-width: 110px;
+            white-space: normal;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+            vertical-align: top;
+        }
+
+        .batch-table td:first-child,
+        .batch-table th:first-child {
+            min-width: 90px;
+            position: sticky;
+            left: 0;
+            background: white;
+            z-index: 1;
+        }
+
+        .batch-table th:first-child {
+            background: #eeeeee;
+            z-index: 2;
+        }
+
+        .batch-scroll {
+            max-height: 650px;
+            overflow: auto;
+        }
     </style>
 </head>
 <body>
@@ -384,6 +676,25 @@ HTML_TEMPLATE = """
     </form>
 </div>
 
+<div class="card">
+    <h2>Пакетное предсказание из файла</h2>
+
+    <form method="post" enctype="multipart/form-data">
+        <input type="hidden" name="action" value="batch">
+
+        <label>CSV-файл с материалами</label>
+        <input type="file" name="batch_file" accept=".csv,.txt" required>
+
+        <div class="hint">
+            Обязательные столбцы:
+            compound, volume_atom, density, energy_atom, Egap, Egap_type, spacegroup_relax.
+            Дополнительно можно указать enthalpy_formation_atom.
+        </div>
+
+        <button type="submit">Посчитать файл</button>
+    </form>
+</div>
+
 {% if error %}
 <div class="card">
     <h2>Ошибка</h2>
@@ -395,6 +706,13 @@ HTML_TEMPLATE = """
 <div class="card">
     <h2>Проверка</h2>
     <div class="error">{{ check_message }}</div>
+</div>
+{% endif %}
+
+{% if saved_message %}
+<div class="card">
+    <h2>Сохранение</h2>
+    <p>{{ saved_message }}</p>
 </div>
 {% endif %}
 
@@ -450,6 +768,66 @@ HTML_TEMPLATE = """
 </div>
 {% endif %}
 
+{% if batch_result %}
+<div class="card batch-result-card">
+    <h2>Пакетное предсказание</h2>
+
+    <p>Обработано строк: {{ batch_result|length }}</p>
+
+    <div class="table-scroll batch-scroll">
+    <table class="batch-table">
+        <tr>
+            <th>Состав</th>
+            {% for key in output_order %}
+                <th>{{ labels.get(key, key) }}</th>
+            {% endfor %}
+        </tr>
+
+        {% for row in batch_result %}
+        <tr>
+            <td>{{ row.get("compound", "") }}</td>
+
+            {% for key in output_order %}
+            <td>
+                {% if row.get(key) is number %}
+                    {{ format_result_value(key, row.get(key))|safe }}
+                    {% if units.get(key, "") %}
+                        {{ units.get(key, "")|safe }}
+                    {% endif %}
+                {% else %}
+                    {{ row.get(key, "") }}
+                {% endif %}
+            </td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+    </table>
+    </div>
+</div>
+{% endif %}
+
+{% if batch_errors %}
+<div class="card">
+    <h2>Ошибки пакетного предсказания</h2>
+
+    <table>
+        <tr>
+            <th>Строка</th>
+            <th>Состав</th>
+            <th>Ошибка</th>
+        </tr>
+
+        {% for err in batch_errors %}
+        <tr>
+            <td>{{ err.get("row") }}</td>
+            <td>{{ err.get("compound") }}</td>
+            <td>{{ err.get("error") }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+{% endif %}
+
 </body>
 </html>
 """
@@ -469,12 +847,13 @@ def index():
     check_requested = False
     check_values = None
     check_message = None
-    
+
+    batch_result = None
+    batch_errors = None
+    saved_message = None
 
     if request.method == "POST":
-        form_values = request.form.to_dict()
         action = request.form.get("action", "predict")
-        check_requested = action == "check"
 
         if not MODEL_LOADED:
             try_load_model()
@@ -483,14 +862,48 @@ def index():
             error = "Модель не загружена:\n" + str(MODEL_ERROR)
         else:
             try:
-                row_dict = row_dict_from_flask_form(request.form)
-                result = predict_from_dict(row_dict)
+                if action == "batch":
+                    batch_file = request.files.get("batch_file")
 
-                if check_requested:
-                    check_values, check_message = get_aflow_check_values(
-                        row_dict.get("compound", ""),
-                        result.keys()
+                    batch_result, batch_errors, batch_csv_path = predict_batch_from_file(
+                        batch_file
                     )
+
+                    output_dir = get_output_dir()
+                    results_csv_path = join(output_dir, RESULTS_CSV_NAME)
+
+                    saved_parts = [
+                        f"Результаты дописаны в {results_csv_path}"
+                    ]
+
+                    if batch_csv_path:
+                        saved_parts.append(
+                            f"Пакетный CSV сохранён в {batch_csv_path}"
+                        )
+
+                    saved_message = "\n".join(saved_parts)
+
+                else:
+                    form_values = request.form.to_dict()
+                    check_requested = action == "check"
+
+                    row_dict = row_dict_from_flask_form(request.form)
+                    result = predict_from_dict(row_dict)
+
+                    if check_requested:
+                        check_values, check_message = get_aflow_check_values(
+                            row_dict.get("compound", ""),
+                            result.keys()
+                        )
+
+                    results_csv_path = append_prediction_to_results_csv(
+                        row_dict=row_dict,
+                        result=result,
+                        source="manual form",
+                        check_values=check_values
+                    )
+                    
+                    saved_message = f"Результат сохранён в {results_csv_path}"
 
             except Exception:
                 error = format_exc()
@@ -508,6 +921,10 @@ def index():
         check_requested=check_requested,
         check_values=check_values,
         check_message=check_message,
+        batch_result=batch_result,
+        batch_errors=batch_errors,
+        saved_message=saved_message,
+        output_order=output_order,
     )
 
 # =========================

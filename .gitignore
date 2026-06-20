@@ -1,3 +1,4 @@
 app/
 pyinstaller/
 generate.txt
+jupyter/test.csv
